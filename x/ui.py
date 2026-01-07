@@ -1,110 +1,73 @@
 import streamlit as st
-from llm_helper import llm_business_advisor
-from openai_ads import generate_ad_content
+from app.logic import llm_business_advisor
 
-st.set_page_config(page_title="AI Business Growth Advisor")
+st.set_page_config(page_title="AI Business Growth Manager", layout="centered")
 
-st.title("🧠 AI Business Growth Advisor")
-st.caption("Product, pricing & ad creation using AI")
+st.title("🧠 AI Business Growth Manager")
+st.caption("Practical guidance for small business owners (India-focused)")
 
-# ===================== INPUTS =====================
+# ===================== INPUT SECTION =====================
 
-business_type = st.selectbox(
-    "Business Type",
-    ["tea shop", "dress shop", "kirana", "electronics"],
-    key="business_type"
+product_name = st.text_input(
+    "Product / Service Name",
+    placeholder="Example: Tea, Saree, Bluetooth Speaker, Snacks"
 )
 
-monthly_budget = st.number_input(
-    "Monthly Budget (₹)",
+budget = st.number_input(
+    "Total Monthly Budget (₹)",
     min_value=500,
-    step=500,
-    key="monthly_budget"
+    step=500
 )
 
-inventory_type = st.selectbox(
-    "Inventory Type",
-    ["fast moving", "slow moving", "seasonal"],
-    key="inventory_type"
-)
-
-staff_count = st.number_input(
-    "Staff Count",
-    min_value=1,
-    step=1,
-    key="staff_count"
-)
-
-customer_flow = st.selectbox(
-    "Customer Flow",
-    ["walk-in", "mixed", "online"],
-    key="customer_flow"
-)
-
-online_presence = st.selectbox(
-    "Online Presence",
-    ["instagram", "whatsapp", "none"],
-    key="online_presence"
+ad_investment_choice = st.radio(
+    "Are you planning to invest in advertisements?",
+    ["Yes", "No"]
 )
 
 # ===================== ACTION =====================
 
-if st.button("🚀 Get AI Advice", key="get_ai_advice"):
+if st.button("📊 Get Business Guidance"):
 
-    vendor_profile = {
-        "business_type": business_type,
-        "monthly_budget": monthly_budget,
-        "inventory_type": inventory_type,
-        "staff_count": staff_count,
-        "customer_flow": customer_flow,
-        "online_presence": online_presence
-    }
+    if not product_name:
+        st.warning("Please enter a product or service name.")
+    else:
+        with st.spinner("Analyzing your business realistically..."):
+            result = llm_business_advisor(
+                product_name=product_name,
+                budget=budget,
+                ad_investment_choice=ad_investment_choice
+            )
 
-    with st.spinner("Analyzing your business..."):
-        result = llm_business_advisor(vendor_profile)
+        # ===================== OUTPUT SECTIONS =====================
 
-    # ===================== PRODUCTS =====================
+        st.subheader("📈 Current Market Price (India)")
+        market = result.get("market_price_analysis", {})
+        st.write(f"**Price Range:** {market.get('price_range_inr', '')}")
+        st.write(f"**Category:** {market.get('category', '')}")
+        st.write(market.get("notes", ""))
 
-    st.subheader("🛒 Product Recommendations")
+        st.subheader("💰 Resource-Aware Budget Utilization")
+        budget_use = result.get("budget_utilization", {})
+        st.write(f"**Procurement:** {budget_use.get('procurement', '')}")
+        st.write(f"**Operations:** {budget_use.get('operations', '')}")
+        st.write(f"**Advertising:** {budget_use.get('advertising', '')}")
 
-    for idx, product in enumerate(result.get("recommended_products", []), start=1):
-        st.markdown(f"### Option {idx}: {product.get('product_name', 'N/A')}")
-        st.write(f"**Price per unit:** ₹{product.get('price_per_unit', 0)}")
-        st.write(f"**Quantity:** {product.get('quantity', 0)}")
-        st.write(f"**Why it sells:** {product.get('reason_for_demand', '')}")
+        st.subheader("📊 Estimated Profit")
+        profit = result.get("profit_estimation", {})
+        st.write(f"**Selling Price / Unit:** {profit.get('selling_price_per_unit', '')}")
+        st.write(f"**Profit Margin:** {profit.get('profit_margin', '')}")
+        st.write(f"**Estimated Total Profit:** {profit.get('estimated_total_profit', '')}")
+        st.write(profit.get("assumptions", ""))
 
-    # ===================== PLATFORMS =====================
+        st.subheader("📣 Best Platforms for Promotion")
+        for platform in result.get("best_platforms", []):
+            st.write(f"• {platform}")
 
-    st.subheader("📣 Cost-Effective Marketing Platforms")
+        st.subheader("🚫 Platforms to Avoid")
+        for platform in result.get("platforms_to_avoid", []):
+            st.write(f"• {platform}")
 
-    for platform in result.get("platform_recommendations", []):
-        st.write(
-            f"**{platform.get('platform_name', '')}** – "
-            f"{platform.get('why_cost_effective', '')}"
-        )
+        st.subheader("🤝 Fundraising & Collaboration Options")
+        for option in result.get("fundraising_and_collaboration", []):
+            st.write(f"• {option}")
 
-    # ===================== ADS =====================
-
-    st.divider()
-    st.subheader("🎨 AI-Generated Ads")
-
-    if result.get("recommended_products"):
-        top_product = result["recommended_products"][0]
-
-        with st.spinner("Creating ad content..."):
-            ads = generate_ad_content(vendor_profile, top_product)
-
-        st.markdown("### 📸 Instagram Reel Caption")
-        st.write(ads.get("instagram_reel_caption", ""))
-
-        st.markdown("### 🖼️ Instagram Post Caption")
-        st.write(ads.get("instagram_post_caption", ""))
-
-        st.markdown("### 📲 WhatsApp Broadcast Message")
-        st.write(ads.get("whatsapp_message", ""))
-
-        st.markdown("### 🎯 Call To Action")
-        st.write(ads.get("call_to_action", ""))
-
-        st.markdown("### 🔖 Hashtags")
-        st.write(" ".join(ads.get("hashtags", [])))
